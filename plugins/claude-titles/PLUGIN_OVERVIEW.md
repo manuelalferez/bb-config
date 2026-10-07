@@ -1,5 +1,5 @@
-Let bb write short thread titles and commit messages with your local Claude
-Code CLI (Haiku), using your existing Claude login.
+Let bb write short thread titles (Sonnet) and commit messages (Haiku) with
+your local Claude Code CLI, using your existing Claude login.
 
 ## What you get
 

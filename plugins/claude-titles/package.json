@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "Claude Titles",
-    "description": "Thread titles and commit messages written by the local Claude Code CLI (Haiku).",
+    "description": "Thread titles (Sonnet) and commit messages (Haiku) written by the local Claude Code CLI.",
     "branding": {
       "icon": "Sparkles"
     },

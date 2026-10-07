@@ -98,7 +98,8 @@ bb aborts a title or commit task after 5 seconds, and the plugin then kills
 the claude process. The plugin sets `MAX_THINKING_TOKENS=0`; without it Haiku
 thinks and takes about 6 s, so every title would time out. claude runs in an
 empty temporary directory so it loads no `CLAUDE.md`. `sonnet` is slower and
-can hit the limit; keep `haiku` for titles.
+can hit the limit; keep `model` on `haiku`. Titles the plugin writes itself use
+`conversationModel` (`sonnet`) and have a 20 s timeout instead.
 
 On failure the error includes claude's stderr. Check `claude auth status` and
 the plugin log (`bb plugin logs claude-titles`).

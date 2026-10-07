@@ -1,7 +1,7 @@
 # bb-plugin-claude-titles
 
-bb plugin that registers the `claude-code` AI service: bb's thread titles and
-commit messages are written by the local `claude` CLI (Haiku). Its frontend
+bb plugin that registers the `claude-code` AI service: thread titles (Sonnet)
+and commit messages (Haiku) are written by the local `claude` CLI. Its frontend
 also turns an empty thread rename into a regenerated title.
 
 ```bash

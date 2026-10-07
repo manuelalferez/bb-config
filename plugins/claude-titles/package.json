@@ -1,0 +1,28 @@
+{
+  "name": "bb-plugin-claude-titles",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "bb": ">=0.45",
+    "bbPluginSdk": ">=0.6.15"
+  },
+  "bb": {
+    "name": "Claude Titles",
+    "description": "Thread titles and commit messages written by the local Claude Code CLI (Haiku).",
+    "branding": {
+      "icon": "Sparkles"
+    },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.15",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "@types/react": "^19.0.0",
+    "sonner": "^1.7.4"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

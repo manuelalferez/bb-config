@@ -1,0 +1,233 @@
+/* The plugin's own footer icon, hidden while the battery stands in for it. */
+li[data-usage-battery-anchor] {
+  display: none;
+}
+
+/* Footer battery */
+
+.usage-battery-footer {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  list-style: none;
+}
+
+/* bb's badges after the battery stay right-aligned when they wrap. */
+.usage-battery-footer ~ li {
+  margin-inline-start: auto;
+}
+
+.usage-battery-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* Same tone as bb's footer icons, which draw at 0.8 opacity. */
+.usage-battery-percent,
+.usage-battery-icon {
+  opacity: 0.8;
+}
+
+.usage-battery-button:hover {
+  background: var(--sidebar-accent, var(--accent));
+}
+
+.usage-battery-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.usage-battery-button[data-stale] {
+  opacity: 0.6;
+}
+
+.usage-battery-icon {
+  flex: none;
+  display: block;
+}
+
+.usage-battery-shell {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.33;
+}
+
+.usage-battery-nub {
+  fill: currentColor;
+}
+
+.usage-battery-fill {
+  fill: currentColor;
+  transition: width 300ms ease;
+}
+
+.usage-battery-button[data-level="low"] {
+  color: var(--warning, #e3a008);
+}
+
+.usage-battery-button[data-level="critical"] {
+  color: var(--destructive, #e5484d);
+}
+
+/* Disclosure card — mirrors bb's built-in Provider usage card. */
+
+.usage-battery-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 20rem;
+}
+
+.usage-battery-card-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.usage-battery-title {
+  flex: 1;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.usage-battery-close:hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-close svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.usage-battery-card-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.usage-battery-account {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  margin-bottom: 8px;
+}
+
+.usage-battery-email {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-plan {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--sidebar-border) 60%, transparent);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--subtle-foreground, var(--muted-foreground));
+}
+
+/* One grid for all rows, so columns line up and fit the longest label. */
+.usage-battery-rows {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 10px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-battery-row {
+  display: contents;
+}
+
+.usage-battery-row > span {
+  white-space: nowrap;
+}
+
+.usage-battery-row-label,
+.usage-battery-row-reset {
+  color: var(--subtle-foreground, var(--muted-foreground));
+}
+
+.usage-battery-row-value {
+  text-align: right;
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-row-reset {
+  min-width: 36px;
+  text-align: right;
+}
+
+.usage-battery-note {
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--subtle-foreground, var(--muted-foreground));
+}
+
+.usage-battery-bar {
+  height: 4px;
+  min-width: 0;
+  border-radius: 9999px;
+  background: var(--sidebar-border);
+  overflow: hidden;
+}
+
+.usage-battery-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.usage-battery-row[data-level="low"] .usage-battery-bar > span {
+  background: var(--warning, #e3a008);
+}
+
+.usage-battery-row[data-level="critical"] .usage-battery-bar > span {
+  background: var(--destructive, #e5484d);
+}

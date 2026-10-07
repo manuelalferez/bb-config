@@ -25,6 +25,7 @@ Al cambiar un ajuste en bb, añade su comando `bb settings …` al script.
 
 ```bash
 bb plugin install git:https://github.com/manuelalferez/bb-config@main --plugin claude-titles --yes
+bb plugin install git:https://github.com/manuelalferez/bb-config@main --plugin usage-battery --yes
 ```
 
 bb clona, instala dependencias y compila `dist/` solo. Sigue la rama `main`:

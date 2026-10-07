@@ -3,6 +3,7 @@
   "schemaVersion": 1,
   "name": "manuel-bb-plugins",
   "plugins": [
-    { "name": "claude-titles", "source": "./plugins/claude-titles" }
+    { "name": "claude-titles", "source": "./plugins/claude-titles" },
+    { "name": "usage-battery", "source": "./plugins/usage-battery" }
   ]
 }

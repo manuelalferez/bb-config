@@ -11,6 +11,11 @@ import { z } from "zod";
 const POLL_MS = 3 * 60_000;
 /** Backoff ceiling after failures. */
 const RETRY_MAX_MS = 30 * 60_000;
+/**
+ * Retries while nothing has loaded yet (the battery is blank meanwhile), then
+ * POLL_MS. Never under a minute: the provider rate-limits faster polling.
+ */
+const STARTUP_RETRY_MS = [60_000, 2 * 60_000];
 /** A manual refresh never hits the provider more often than this. */
 const MIN_REFRESH_GAP_MS = 30_000;
 
@@ -180,9 +185,19 @@ export default async function plugin(bb: BbPluginApi) {
   bb.background.service("poll", {
     async start(signal) {
       let delay = POLL_MS;
+      let blankFailures = 0;
       while (!signal.aborted) {
         const next = await poll(signal);
-        delay = next.status === "ok" ? POLL_MS : Math.min(delay * 2, RETRY_MAX_MS);
+        if (next.status === "ok") {
+          delay = POLL_MS;
+          blankFailures = 0;
+        } else if (next.okAt === null) {
+          // No figures to fall back on: retry soon instead of backing off.
+          delay = STARTUP_RETRY_MS[blankFailures++] ?? POLL_MS;
+        } else {
+          // Last-known figures stay on screen, so back off.
+          delay = Math.min(delay * 2, RETRY_MAX_MS);
+        }
         await new Promise<void>((resolve) => {
           const timer = setTimeout(resolve, delay);
           signal.addEventListener(

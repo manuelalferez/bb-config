@@ -10,13 +10,14 @@
 // finding that row; it is hidden while the battery stands in for it. bb's
 // footer markup is not a versioned API: when the anchor can't be found, the
 // plain host icon stays and still opens the same disclosure.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
   definePluginApp,
   useRpc,
   type ExperimentalSidebarFooterDisclosureController,
   type ExperimentalSidebarFooterDisclosureProps,
+  type PluginRpcClient,
 } from "@get-bb/plugin-sdk/app";
 import type { BatteryMode, UsageState, UsageWindow, rpcContract } from "./server";
 import "./app.css";
@@ -37,44 +38,78 @@ let disclosure: ExperimentalSidebarFooterDisclosureController | null = null;
 
 // --- data -------------------------------------------------------------------
 
+type UsageClient = PluginRpcClient<typeof rpcContract>;
+type UsageSnapshot = { state: UsageState | null; now: number };
+
+// One snapshot shared by every useUsage(), so a refresh from the card also
+// updates the footer battery. The timers run once while anyone is subscribed.
+const usage = {
+  snapshot: { state: null, now: Date.now() } as UsageSnapshot,
+  listeners: new Set<() => void>(),
+  rpc: null as UsageClient | null,
+  generation: 0,
+  refreshing: 0,
+  stop: null as (() => void) | null,
+};
+
+function publish(next: Partial<UsageSnapshot>) {
+  usage.snapshot = { ...usage.snapshot, ...next };
+  for (const listener of usage.listeners) listener();
+}
+
+function loadUsage(method: "state" | "refresh") {
+  const rpc = usage.rpc;
+  if (!rpc) return;
+  // A read during a refresh would return the figures the refresh replaces.
+  if (method === "state" && usage.refreshing > 0) return;
+  const id = ++usage.generation;
+  if (method === "refresh") usage.refreshing++;
+  void rpc
+    .call(method, null)
+    .then(
+      (result) => {
+        if (id !== usage.generation) return;
+        publish({ state: result, now: Date.now() });
+      },
+      () => {},
+    )
+    .finally(() => {
+      if (method === "refresh") usage.refreshing--;
+    });
+}
+
+function startUsage(): () => void {
+  loadUsage("state");
+  const read = window.setInterval(() => loadUsage("state"), READ_MS);
+  const clock = window.setInterval(() => publish({ now: Date.now() }), CLOCK_MS);
+  const onVisible = () => {
+    if (document.visibilityState === "visible") loadUsage("state");
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    window.clearInterval(read);
+    window.clearInterval(clock);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
+}
+
+function subscribeUsage(listener: () => void): () => void {
+  usage.listeners.add(listener);
+  usage.stop ??= startUsage();
+  return () => {
+    usage.listeners.delete(listener);
+    if (usage.listeners.size > 0) return;
+    usage.stop?.();
+    usage.stop = null;
+  };
+}
+
+const refreshUsage = () => loadUsage("refresh");
+
 function useUsage() {
-  const rpc = useRpc<typeof rpcContract>();
-  const [state, setState] = useState<UsageState | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const generation = useRef(0);
-
-  const load = useCallback(
-    (method: "state" | "refresh") => {
-      const id = ++generation.current;
-      void rpc.call(method, null).then(
-        (result) => {
-          if (id !== generation.current) return;
-          setState(result);
-          setNow(Date.now());
-        },
-        () => {},
-      );
-    },
-    [rpc],
-  );
-
-  useEffect(() => {
-    load("state");
-    const read = window.setInterval(() => load("state"), READ_MS);
-    const clock = window.setInterval(() => setNow(Date.now()), CLOCK_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") load("state");
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      generation.current++;
-      window.clearInterval(read);
-      window.clearInterval(clock);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [load]);
-
-  return { state, now, refresh: useCallback(() => load("refresh"), [load]) };
+  usage.rpc = useRpc<typeof rpcContract>();
+  const { state, now } = useSyncExternalStore(subscribeUsage, () => usage.snapshot);
+  return { state, now, refresh: refreshUsage };
 }
 
 // --- usage model ------------------------------------------------------------

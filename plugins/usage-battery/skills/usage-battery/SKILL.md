@@ -5,8 +5,9 @@ description: Change or troubleshoot the Usage Battery plugin, the battery at the
 
 # Usage Battery
 
-The footer battery shows the Claude usage LEFT (100% minus used). Clicking it
-opens a card with every window (5h, 7d, per-model) and its reset time.
+The footer battery shows the Claude usage LEFT (100% minus used). Hovering it
+opens a card with every window (5h, 7d, per-model) and its reset time; clicking
+pins the card open until it is closed.
 
 ## Setting
 

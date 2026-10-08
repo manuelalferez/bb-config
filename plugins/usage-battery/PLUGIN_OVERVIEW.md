@@ -5,8 +5,8 @@ Claude subscription limit is left, like a laptop battery.
 
 - The percentage left and a battery icon, always visible. It turns amber at
   30% left and red at 10%.
-- Hover for the window it tracks and when it resets.
-- Click for a card with every window (5-hour, weekly, per-model) and resets.
+- Hover for a card with every window (5-hour, weekly, per-model) and resets;
+  click to keep it open.
 
 ## Settings
 

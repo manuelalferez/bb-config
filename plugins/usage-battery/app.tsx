@@ -1,8 +1,8 @@
 // bb-plugin-usage-battery — a battery at the right end of the sidebar footer.
 //
 // The battery shows how much of the Claude subscription limit is LEFT, like a
-// laptop battery: full at 0% used, empty at 100%. Clicking it toggles a
-// footer disclosure with every window and its reset time.
+// laptop battery: full at 0% used, empty at 100%. Hovering it opens a footer
+// disclosure with every window and its reset time; clicking pins it open.
 //
 // bb renders footer items as icons only, so the battery is drawn by an app
 // overlay that portals its own <li> into the footer row, right after bb's
@@ -10,7 +10,7 @@
 // finding that row; it is hidden while the battery stands in for it. bb's
 // footer markup is not a versioned API: when the anchor can't be found, the
 // plain host icon stays and still opens the same disclosure.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   definePluginApp,
@@ -30,6 +30,10 @@ const ANCHOR_ATTRIBUTE = "data-usage-battery-anchor";
 /** The backend shares one poll; reading its snapshot often is cheap. */
 const READ_MS = 30_000;
 const CLOCK_MS = 30_000;
+/** Hover delays: a pass over the battery doesn't open the card, and moving
+ * from the battery to the card doesn't close it. */
+const HOVER_OPEN_MS = 150;
+const HOVER_CLOSE_MS = 300;
 /** Remaining % at or below which the battery turns amber / red. */
 const LOW = 30;
 const CRITICAL = 10;
@@ -110,6 +114,52 @@ function useUsage() {
   usage.rpc = useRpc<typeof rpcContract>();
   const { state, now } = useSyncExternalStore(subscribeUsage, () => usage.snapshot);
   return { state, now, refresh: refreshUsage };
+}
+
+// --- hover -----------------------------------------------------------------
+
+// A card the hover opened closes shortly after the mouse leaves both the
+// battery and the card. A click pins it, and a card opened any other way
+// (a click, or bb's own icon when the battery can't be placed) starts pinned.
+const hover = {
+  open: false,
+  pinned: false,
+  viaHover: false,
+  timer: null as number | null,
+};
+
+function cancelHover() {
+  if (hover.timer !== null) window.clearTimeout(hover.timer);
+  hover.timer = null;
+}
+
+function hoverIn(event: PointerEvent) {
+  if (event.pointerType !== "mouse") return;
+  cancelHover();
+  if (hover.open) return;
+  hover.timer = window.setTimeout(() => {
+    hover.viaHover = true;
+    disclosure?.open();
+  }, HOVER_OPEN_MS);
+}
+
+function hoverOut(event: PointerEvent) {
+  if (event.pointerType !== "mouse") return;
+  cancelHover();
+  if (hover.open && !hover.pinned) {
+    hover.timer = window.setTimeout(() => disclosure?.close(), HOVER_CLOSE_MS);
+  }
+}
+
+function clickBattery() {
+  cancelHover();
+  // A click on a card the hover opened keeps it open instead of closing it.
+  if (hover.open && !hover.pinned) {
+    hover.pinned = true;
+    return;
+  }
+  hover.viaHover = false;
+  disclosure?.toggle();
 }
 
 // --- usage model ------------------------------------------------------------
@@ -262,9 +312,10 @@ function FooterBattery() {
       className="usage-battery-button"
       data-level={level}
       data-stale={stale || undefined}
-      title={title}
       aria-label={title}
-      onClick={() => disclosure?.toggle()}
+      onClick={clickBattery}
+      onPointerEnter={hoverIn}
+      onPointerLeave={hoverOut}
     >
       <span className="usage-battery-percent">{remaining === null ? "–" : `${remaining}%`}</span>
       <BatteryIcon remaining={remaining} />
@@ -283,10 +334,21 @@ function UsageDetails({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    hover.open = true;
+    hover.pinned = !hover.viaHover;
+    hover.viaHover = false;
+    return () => {
+      cancelHover();
+      hover.open = false;
+      hover.pinned = false;
+    };
+  }, []);
+
   // Laid out like bb's built-in Provider usage card: a 36px header with a
   // divider, then the account line and one 20px row per window, all at 10px.
   return (
-    <div className="usage-battery-card">
+    <div className="usage-battery-card" onPointerEnter={hoverIn} onPointerLeave={hoverOut}>
       <div className="usage-battery-card-head">
         <span className="usage-battery-title">Usage left</span>
         <button type="button" className="usage-battery-close" aria-label="Close" onClick={dismiss}>

@@ -6,3 +6,6 @@ set -euo pipefail
 # Atajos de teclado (ver los actuales: bb settings keyboard list)
 bb settings keyboard set thread.next Mod+e --platform mac     # Cmd+E → siguiente hilo
 bb settings keyboard set thread.archive Mod+g --platform mac  # Cmd+G → archivar hilo
+
+# Batería de uso: mostrar solo la sesión de 5 horas (por defecto: el límite con menos margen)
+bb plugin config usage-battery set mode session

@@ -21,6 +21,9 @@ Atajos de teclado y demás ajustes viven en la base de datos de bb, no en ficher
 
 Al cambiar un ajuste en bb, añade su comando `bb settings …` al script.
 
+También activa los artifacts de claude.ai en los hilos de Claude (`CLAUDE_CODE_ARTIFACT=1` en `~/.claude/settings.json`).
+Los hilos ya abiertos los ven cuando se reinicia su proceso de Claude.
+
 ## Instalar un plugin en otro ordenador
 
 ```bash

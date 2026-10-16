@@ -3,6 +3,12 @@
 # Ejecutar en cada ordenador después de instalar bb: ./settings.sh
 set -euo pipefail
 
+# Plugins del marketplace de bb: se instalan si faltan (los de este repo, ver README)
+for plugin in firstmate-crew; do
+  bb plugin list --json | jq -e --arg id "$plugin" '.plugins[] | select(.id == $id)' > /dev/null \
+    || bb plugin install "$plugin" --yes
+done
+
 # Atajos de teclado (ver los actuales: bb settings keyboard list)
 bb settings keyboard set thread.next Mod+e --platform mac     # Cmd+E → siguiente hilo
 bb settings keyboard set thread.archive Mod+g --platform mac  # Cmd+G → archivar hilo

@@ -9,6 +9,14 @@ for plugin in firstmate-crew; do
     || bb plugin install "$plugin" --yes
 done
 
+# Codex apagado: su CLI no está instalado y FirstMate Crew arranca con el primer proveedor activo (Codex no tiene modelos)
+bb provider disable codex   # volver a activarlo: bb provider enable codex
+
+# FirstMate Crew: los crewmates usan Claude Code con Opus 5.5 y razonamiento alto
+bb plugin config firstmate-crew set crewProvider claude-code
+bb plugin config firstmate-crew set crewModel claude-opus-5-5
+bb plugin config firstmate-crew set crewReasoning high
+
 # Atajos de teclado (ver los actuales: bb settings keyboard list)
 bb settings keyboard set thread.next Mod+e --platform mac     # Cmd+E → siguiente hilo
 bb settings keyboard set thread.archive Mod+g --platform mac  # Cmd+G → archivar hilo

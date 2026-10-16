@@ -22,6 +22,7 @@ Atajos de teclado y demás ajustes viven en la base de datos de bb, no en ficher
 Al cambiar un ajuste en bb, añade su comando `bb settings …` al script.
 
 También instala los plugins del marketplace que falten (`firstmate-crew`); para añadir otro, ponlo en el `for` de `settings.sh`.
+Apaga Codex y deja a los crewmates de FirstMate Crew en Claude Code con Opus 5.5 y razonamiento alto.
 
 También activa los artifacts de claude.ai en los hilos de Claude (`CLAUDE_CODE_ARTIFACT=1` en `~/.claude/settings.json`).
 Los hilos ya abiertos los ven cuando se reinicia su proceso de Claude.

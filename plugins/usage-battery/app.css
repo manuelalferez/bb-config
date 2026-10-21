@@ -17,29 +17,38 @@ li[data-usage-battery-anchor] {
   margin-inline-start: auto;
 }
 
+/* The button keeps the footer's 32px hit area; the pill inside is drawn. */
 .usage-battery-button {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   height: 32px;
-  padding: 0 6px;
+  padding: 0 4px;
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--muted-foreground);
+  color: var(--sidebar-foreground);
   font: inherit;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
-/* Same tone as bb's footer icons, which draw at 0.8 opacity. */
-.usage-battery-percent,
-.usage-battery-icon {
-  opacity: 0.8;
+.usage-battery-pill {
+  --pill-tone: var(--sidebar-foreground);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--sidebar-border) 55%, transparent);
+  box-shadow: inset 0 0 0 1px var(--sidebar-border);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 150ms ease;
 }
 
-.usage-battery-button:hover {
+.usage-battery-button:hover .usage-battery-pill {
   background: var(--sidebar-accent, var(--accent));
 }
 
@@ -52,32 +61,41 @@ li[data-usage-battery-anchor] {
   opacity: 0.6;
 }
 
-.usage-battery-icon {
+.usage-battery-dot {
   flex: none;
-  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--pill-tone);
 }
 
-.usage-battery-shell {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.33;
+.usage-battery-reset {
+  color: var(--muted-foreground);
 }
 
-.usage-battery-nub {
-  fill: currentColor;
+.usage-battery-button[data-level="unknown"] .usage-battery-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--muted-foreground);
 }
 
-.usage-battery-fill {
-  fill: currentColor;
-  transition: width 300ms ease;
+.usage-battery-button[data-level="low"] .usage-battery-pill {
+  --pill-tone: var(--warning, #e3a008);
+  color: var(--pill-tone);
+  background: color-mix(in oklch, var(--pill-tone) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--pill-tone) 35%, transparent);
 }
 
-.usage-battery-button[data-level="low"] {
-  color: var(--warning, #e3a008);
+.usage-battery-button[data-level="critical"] .usage-battery-pill {
+  --pill-tone: var(--destructive, #e5484d);
+  color: var(--pill-tone);
+  background: color-mix(in oklch, var(--pill-tone) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--pill-tone) 35%, transparent);
 }
 
-.usage-battery-button[data-level="critical"] {
-  color: var(--destructive, #e5484d);
+.usage-battery-button[data-level="low"] .usage-battery-reset,
+.usage-battery-button[data-level="critical"] .usage-battery-reset {
+  color: inherit;
+  opacity: 0.8;
 }
 
 /* Disclosure card — mirrors bb's built-in Provider usage card. */

@@ -1,8 +1,9 @@
 // bb-plugin-usage-battery — a battery at the right end of the sidebar footer.
 //
-// The battery shows how much of the Claude subscription limit is LEFT, like a
-// laptop battery: full at 0% used, empty at 100%. Hovering it opens a footer
-// disclosure with every window and its reset time; clicking pins it open.
+// The battery is a pill showing how much of the Claude subscription limit is
+// LEFT and the time until that window resets ("● 84% · 50m"). Hovering it
+// opens a footer disclosure with every window and its reset time; clicking
+// pins it open.
 //
 // bb renders footer items as icons only, so the battery is drawn by an app
 // overlay that portals its own <li> into the footer row, right after bb's
@@ -211,20 +212,6 @@ function resetIn(resetsAt: string | null, now: number): string {
 
 // --- battery ----------------------------------------------------------------
 
-function BatteryIcon({ remaining }: { remaining: number | null }) {
-  // Sized and stroked like bb's 16px footer icons: a 17×9 body plus a nub,
-  // with the fill 1px inside the outline.
-  const inner = 13.4;
-  const fill = remaining === null ? 0 : Math.max(remaining > 0 ? 1 : 0, (inner * remaining) / 100);
-  return (
-    <svg className="usage-battery-icon" width="20" height="10" viewBox="0 0 20 10" aria-hidden="true">
-      <rect className="usage-battery-shell" x="0.67" y="0.67" width="16.66" height="8.66" rx="2.2" />
-      <path className="usage-battery-nub" d="M18.4 3.4 a1.2 1.6 0 0 1 0 3.2 z" />
-      <rect className="usage-battery-fill" x="2.3" y="2.3" width={fill} height="5.4" rx="1" />
-    </svg>
-  );
-}
-
 function useFooterSlot(): HTMLElement | null {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
 
@@ -317,8 +304,11 @@ function FooterBattery() {
       onPointerEnter={hoverIn}
       onPointerLeave={hoverOut}
     >
-      <span className="usage-battery-percent">{remaining === null ? "–" : `${remaining}%`}</span>
-      <BatteryIcon remaining={remaining} />
+      <span className="usage-battery-pill">
+        <span className="usage-battery-dot" />
+        <span className="usage-battery-percent">{remaining === null ? "–" : `${remaining}%`}</span>
+        {reset ? <span className="usage-battery-reset">· {reset}</span> : null}
+      </span>
     </button>,
     slot,
   );

@@ -3,8 +3,8 @@ Claude subscription limit is left, like a laptop battery.
 
 ## What you get
 
-- The percentage left and a battery icon, always visible. It turns amber at
-  30% left and red at 10%.
+- A pill with the percentage left and the time until that window resets
+  (`● 84% · 50m`), always visible. It turns amber at 30% left and red at 10%.
 - Hover for a card with every window (5-hour, weekly, per-model) and resets;
   click to keep it open.
 

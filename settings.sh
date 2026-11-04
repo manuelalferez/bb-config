@@ -7,8 +7,8 @@ set -euo pipefail
 bb settings keyboard set thread.next Mod+e --platform mac     # Cmd+E → siguiente hilo
 bb settings keyboard set thread.archive Mod+g --platform mac  # Cmd+G → archivar hilo
 
-# Batería de uso: mostrar solo la sesión de 5 horas (por defecto: el límite con menos margen)
-bb plugin config usage-battery set mode session
+# Batería de uso: lo que queda de la parte de hoy del límite semanal (sábado y domingo cuentan la mitad)
+bb plugin config usage-battery set mode today
 
 # Artifacts en los hilos de Claude: bb lanza Claude Code en modo SDK, que oculta la herramienta Artifact.
 # CLAUDE_CODE_ARTIFACT=1 (sin documentar) la activa. Va en ~/.claude/settings.json, así que vale para todo `claude`.

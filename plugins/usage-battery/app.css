@@ -220,6 +220,17 @@ li[data-usage-battery-anchor] {
   text-align: right;
 }
 
+/* Today's row: first, a little stronger, and its value spans the reset column. */
+.usage-battery-row-today .usage-battery-row-label {
+  color: var(--sidebar-foreground);
+  font-weight: 500;
+}
+
+.usage-battery-row-value-wide {
+  grid-column: span 2;
+  font-weight: 500;
+}
+
 .usage-battery-note {
   margin: 8px 0 0;
   font-size: 10px;

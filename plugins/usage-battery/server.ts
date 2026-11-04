@@ -4,8 +4,12 @@
 // keeps the snapshot in memory. Every open window reads that snapshot through
 // the `state` RPC, so more tabs add no load on the provider (which rate-limits
 // the call when it is polled about once a minute).
+//
+// It also keeps one snapshot a day (the weekly % left at the first reading of
+// the local day) in plugin storage, so the card can show today's budget.
 import { defineRpcContract, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { isWeekly, nextSnapshot, todayBudget, type DaySnapshot } from "./budget";
 
 /** Normal poll period. */
 const POLL_MS = 3 * 60_000;
@@ -22,8 +26,10 @@ const MIN_REFRESH_GAP_MS = 30_000;
 const CLAUDE_PROVIDER_ID = "claude-code";
 /** Key used before bb keyed the answer by provider id. */
 const LEGACY_CLAUDE_KEY = "claudeCode";
+/** Plugin storage key of today's DaySnapshot. */
+const DAY_KEY = "day";
 
-export const BATTERY_MODES = ["tightest", "session", "weekly"] as const;
+export const BATTERY_MODES = ["today", "tightest", "session", "weekly"] as const;
 export type BatteryMode = (typeof BATTERY_MODES)[number];
 
 type UsageLimits = Awaited<
@@ -54,6 +60,10 @@ const usageState = z.object({
   /** When the figures in `windows` were last fresh, ISO. */
   okAt: z.string().nullable(),
   mode: z.enum(BATTERY_MODES),
+  /** Today's share of the weekly limit and what is left of it, or null. */
+  today: z
+    .object({ budgetPercent: z.number(), leftPercent: z.number() })
+    .nullable(),
 });
 
 export type UsageState = z.infer<typeof usageState>;
@@ -65,7 +75,7 @@ export const rpcContract = defineRpcContract({
   refresh: { input: z.null(), output: usageState },
 });
 
-type Snapshot = Omit<UsageState, "mode"> & { fetchedAt: string | null };
+type Snapshot = Omit<UsageState, "mode" | "today"> & { fetchedAt: string | null };
 
 const UNKNOWN: Snapshot = {
   status: "unknown",
@@ -121,15 +131,33 @@ export default async function plugin(bb: BbPluginApi) {
       type: "select",
       label: "Battery shows",
       description:
-        "tightest = whichever of the 5-hour session or weekly limit has less left; session = 5-hour window only; weekly = weekly window only.",
+        "today = what is left of today's share of the weekly limit; tightest = whichever of the 5-hour session or weekly limit has less left; session = 5-hour window only; weekly = weekly window only.",
       options: [...BATTERY_MODES],
-      default: "tightest",
+      default: "today",
     },
   });
 
   let current: Snapshot = UNKNOWN;
   let inFlight: Promise<Snapshot> | null = null;
   let complaint = "";
+  let day: DaySnapshot | null = null;
+  let dayLoaded = false;
+
+  /** Starts today's snapshot on the first fresh reading of a new day or window. */
+  async function recordDay(): Promise<void> {
+    if (!dayLoaded) {
+      day = (await bb.storage.kv.get<DaySnapshot>(DAY_KEY).catch(() => undefined)) ?? null;
+      dayLoaded = true;
+    }
+    const weekly = current.status === "ok" ? current.windows.find(isWeekly) : undefined;
+    if (!weekly) return;
+    const next = nextSnapshot(day, weekly, Date.now());
+    if (next === null || next === day) return;
+    day = next;
+    await bb.storage.kv.set(DAY_KEY, next).catch((error: unknown) => {
+      bb.log.warn(`usage battery: couldn't store today's snapshot: ${String(error)}`);
+    });
+  }
 
   async function poll(signal?: AbortSignal): Promise<Snapshot> {
     if (inFlight) return inFlight;
@@ -152,6 +180,7 @@ export default async function plugin(bb: BbPluginApi) {
       } finally {
         inFlight = null;
       }
+      await recordDay();
       const key = current.status === "ok" ? "" : `${current.status}:${current.message ?? ""}`;
       if (key !== complaint) {
         complaint = key;
@@ -165,11 +194,13 @@ export default async function plugin(bb: BbPluginApi) {
   async function withMode(snapshot: Snapshot): Promise<UsageState> {
     const { mode } = await settings.get();
     const { fetchedAt: _, ...rest } = snapshot;
+    const weekly = snapshot.windows.find(isWeekly);
     return {
       ...rest,
       mode: (BATTERY_MODES as readonly string[]).includes(mode)
         ? (mode as BatteryMode)
-        : "tightest",
+        : "today",
+      today: weekly ? todayBudget(day, weekly, Date.now()) : null,
     };
   }
 

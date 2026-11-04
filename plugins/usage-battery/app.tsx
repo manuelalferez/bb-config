@@ -1,7 +1,9 @@
 // bb-plugin-usage-battery — a battery at the right end of the sidebar footer.
 //
 // The battery is a pill showing how much of the Claude subscription limit is
-// LEFT and the time until that window resets ("● 84% · 50m"). Hovering it
+// LEFT and the time until that window resets ("● 84% · 50m"). In the default
+// `today` mode the percentage is what is left of today's share of the weekly
+// limit (see budget.ts), and the reset is the weekly one. Hovering it
 // opens a footer disclosure with every window and its reset time; clicking
 // pins it open.
 //
@@ -21,6 +23,7 @@ import {
   type PluginRpcClient,
 } from "@get-bb/plugin-sdk/app";
 import type { BatteryMode, UsageState, UsageWindow, rpcContract } from "./server";
+import { isWeekly } from "./budget";
 import "./app.css";
 
 const PLUGIN_ID = "usage-battery";
@@ -166,8 +169,6 @@ function clickBattery() {
 // --- usage model ------------------------------------------------------------
 
 const isSession = (w: UsageWindow) => /session|5.?h/i.test(w.label);
-const isWeekly = (w: UsageWindow) =>
-  /week/i.test(w.label) && !/sonnet|opus|fable|haiku/i.test(w.label);
 
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -178,7 +179,8 @@ function batteryWindow(windows: UsageWindow[], mode: BatteryMode): UsageWindow |
   const session = windows.find(isSession) ?? null;
   const weekly = windows.find(isWeekly) ?? null;
   if (mode === "session") return session ?? weekly;
-  if (mode === "weekly") return weekly ?? session;
+  // `today` falls back to the weekly window its budget comes from.
+  if (mode === "weekly" || mode === "today") return weekly ?? session;
   const candidates = [session, weekly].filter((w): w is UsageWindow => w !== null);
   if (candidates.length === 0) return windows[0] ?? null;
   return candidates.reduce((a, b) => (b.usedPercent > a.usedPercent ? b : a));
@@ -284,14 +286,17 @@ function FooterBattery() {
   if (slot === null) return null;
 
   const window_ = state ? batteryWindow(state.windows, state.mode) : null;
-  const remaining = window_ ? 100 - clampPercent(window_.usedPercent) : null;
-  const level = remaining === null ? "unknown" : levelOf(remaining);
+  const windowLeft = window_ ? 100 - clampPercent(window_.usedPercent) : null;
+  // In `today` mode the pill shows today's share; its colour still follows the window.
+  const today = state?.mode === "today" && window_ && isWeekly(window_) ? state.today : null;
+  const remaining = today ? clampPercent(today.leftPercent) : windowLeft;
+  const level = windowLeft === null ? "unknown" : levelOf(windowLeft);
   const stale = state !== null && state.status !== "ok";
   const reset = window_ ? resetIn(window_.resetsAt, now) : "";
   const title =
     remaining === null
       ? "Claude usage: unavailable"
-      : `Claude ${shortLabel(window_!)}: ${remaining}% left${reset ? ` · resets in ${reset}` : ""}${stale ? " (last known)" : ""}`;
+      : `Claude ${today ? "today" : shortLabel(window_!)}: ${remaining}% left${reset ? ` · resets in ${reset}` : ""}${stale ? " (last known)" : ""}`;
 
   return createPortal(
     <button
@@ -361,6 +366,7 @@ function UsageDetails({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
         ) : (
             <>
             <div className="usage-battery-rows">
+              {state.today ? <TodayRow today={state.today} /> : null}
               {state.windows.map((w) => {
                 const used = clampPercent(w.usedPercent);
                 const left = 100 - used;
@@ -380,6 +386,21 @@ function UsageDetails({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
             </>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Today's share of the weekly limit: the bar empties as the day's share is used. */
+function TodayRow({ today }: { today: NonNullable<UsageState["today"]> }) {
+  const left = clampPercent(today.leftPercent);
+  const share = today.budgetPercent > 0 ? (today.leftPercent / today.budgetPercent) * 100 : 0;
+  return (
+    <div className="usage-battery-row usage-battery-row-today">
+      <span className="usage-battery-row-label">Today</span>
+      <span className="usage-battery-bar">
+        <span style={{ width: `${Math.max(0, Math.min(100, share))}%` }} />
+      </span>
+      <span className="usage-battery-row-value usage-battery-row-value-wide">{left}% left</span>
     </div>
   );
 }

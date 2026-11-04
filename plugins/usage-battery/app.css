@@ -106,6 +106,11 @@ li[data-usage-battery-anchor] {
   max-height: 20rem;
 }
 
+/* The settings view is taller; its body scrolls on a short window. */
+.usage-battery-card[data-view="settings"] {
+  max-height: min(32rem, 80vh);
+}
+
 .usage-battery-card-head {
   display: flex;
   align-items: center;
@@ -259,4 +264,307 @@ li[data-usage-battery-anchor] {
 
 .usage-battery-row[data-level="critical"] .usage-battery-bar > span {
   background: var(--destructive, #e5484d);
+}
+
+/* Card head in the settings view: back to the usage rows, centred title. */
+
+.usage-battery-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 6px 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.usage-battery-back:hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-back svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.usage-battery-title-center {
+  text-align: center;
+}
+
+.usage-battery-close svg circle {
+  fill: none;
+}
+
+/* Settings view */
+
+.usage-battery-settings {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-set-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 2px 0 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.usage-battery-set-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.usage-battery-set-head small {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+
+.usage-battery-set-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.usage-battery-hint {
+  margin: 0;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--muted-foreground);
+}
+
+.usage-battery-hint b {
+  font-weight: 500;
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-set-foot {
+  margin-top: -2px;
+}
+
+.usage-battery-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.usage-battery-chip {
+  padding: 3px 8px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  font: inherit;
+  font-size: 10px;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.usage-battery-chip:hover:not([aria-pressed="true"]) {
+  background: var(--sidebar-accent);
+}
+
+.usage-battery-chip[aria-pressed="true"] {
+  border-color: var(--sidebar-foreground);
+  background: var(--sidebar-foreground);
+  color: var(--sidebar, var(--background));
+}
+
+/* Daily plan: seven bars. Height is the day's weight (top = 2×, dashed line
+   = 1×); the label above is that day's share of the week. */
+.usage-battery-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.usage-battery-day {
+  display: grid;
+  grid-template-rows: 14px 84px 14px 12px;
+  justify-items: center;
+  gap: 2px;
+  border-radius: 6px;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.usage-battery-day:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.usage-battery-day-share {
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-battery-day-track {
+  position: relative;
+  width: 100%;
+  max-width: 30px;
+  height: 84px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--sidebar-accent);
+}
+
+.usage-battery-day-track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  border-top: 1px dashed color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+}
+
+.usage-battery-day-track > span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 5px 5px 0 0;
+  background: color-mix(in oklch, var(--sidebar-foreground) 30%, transparent);
+}
+
+.usage-battery-day[data-today] .usage-battery-day-track > span {
+  background: var(--sidebar-foreground);
+}
+
+.usage-battery-day:hover .usage-battery-day-track {
+  box-shadow: inset 0 0 0 1px var(--muted-foreground);
+}
+
+.usage-battery-day-label {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.usage-battery-day[data-today] .usage-battery-day-label {
+  font-weight: 600;
+  color: var(--sidebar-foreground);
+}
+
+.usage-battery-day-weight {
+  font-size: 9px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Warning slider */
+.usage-battery-warn-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 10px;
+}
+
+.usage-battery-warn-row input {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--sidebar-foreground);
+}
+
+.usage-battery-warn-row output {
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented control: what the pill shows. */
+.usage-battery-seg {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sidebar-accent);
+}
+
+.usage-battery-seg button {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.usage-battery-seg button[aria-pressed="true"] {
+  background: var(--sidebar, var(--background));
+  color: var(--sidebar-foreground);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.14);
+}
+
+.usage-battery-switch {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--sidebar-border);
+  cursor: pointer;
+}
+
+.usage-battery-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--sidebar, var(--background));
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 120ms ease;
+}
+
+.usage-battery-switch[aria-checked="true"] {
+  background: var(--sidebar-foreground);
+}
+
+.usage-battery-switch[aria-checked="true"]::after {
+  transform: translateX(12px);
+}
+
+.usage-battery-chip:focus-visible,
+.usage-battery-seg button:focus-visible,
+.usage-battery-switch:focus-visible,
+.usage-battery-back:focus-visible,
+.usage-battery-close:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .usage-battery-switch::after {
+    transition: none;
+  }
 }

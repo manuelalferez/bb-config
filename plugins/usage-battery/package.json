@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test": "TZ=Europe/Madrid node --test budget.test.ts",
+    "test": "TZ=Europe/Madrid node --test budget.test.ts prefs.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

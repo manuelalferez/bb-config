@@ -20,6 +20,8 @@
     "server.ts",
     "app.tsx",
     "budget.ts",
-    "budget.test.ts"
+    "budget.test.ts",
+    "prefs.ts",
+    "prefs.test.ts"
   ]
 }

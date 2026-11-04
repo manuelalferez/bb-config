@@ -1,7 +1,19 @@
 // Run with: npm test (TZ=Europe/Madrid, so local days match the examples).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { dayKey, nextSnapshot, todayBudget, workWeight, type DaySnapshot } from "./budget.ts";
+import {
+  DEFAULT_PLAN,
+  PLAN_PRESETS,
+  dayKey,
+  isDayPlan,
+  nextSnapshot,
+  parsePlan,
+  presetOf,
+  todayBudget,
+  weekShares,
+  workWeight,
+  type DaySnapshot,
+} from "./budget.ts";
 
 // The real window on 4 Nov 2026: resets Tue 10 Nov 22:00 Madrid.
 const RESET = "2026-11-10T21:00:00.101Z";
@@ -106,4 +118,78 @@ test("snapshot: kept for the same day and window, renewed on a new day or window
   assert.equal(newWindow.leftAtStart, 100);
 
   assert.equal(nextSnapshot(first, weekly(4, null), local("2026-11-04T11:00")), null);
+});
+
+// --- the daily plan ---------------------------------------------------------
+
+test("presets: Lighter weekends is the default and the old fixed rule", () => {
+  assert.deepEqual(DEFAULT_PLAN, PLAN_PRESETS.lighter);
+  near(workWeight(local("2026-11-04T00:00"), Date.parse(RESET)), 6);
+  near(workWeight(local("2026-11-04T00:00"), Date.parse(RESET), PLAN_PRESETS.lighter), 6);
+});
+
+test("presets: each day's share of the week", () => {
+  const pct = (plan: readonly number[]) => weekShares(plan).map((s) => Math.round(s * 1000) / 10);
+  assert.deepEqual(pct(PLAN_PRESETS.even), [14.3, 14.3, 14.3, 14.3, 14.3, 14.3, 14.3]);
+  assert.deepEqual(pct(PLAN_PRESETS.lighter), [16.7, 16.7, 16.7, 16.7, 16.7, 8.3, 8.3]);
+  assert.deepEqual(pct(PLAN_PRESETS.weekdays), [20, 20, 20, 20, 20, 0, 0]);
+});
+
+test("real now with each preset: Wed 4 Nov, 96% left at 09:00, 93% now", () => {
+  const snapshot = snap("2026-11-04T09:00", 96);
+  const at = (plan: readonly number[]) => todayBudget(snapshot, weekly(7), local("2026-11-04T10:55"), plan);
+  const lighter = at(PLAN_PRESETS.lighter);
+  assert.ok(lighter);
+  near(lighter.budgetPercent, 16);
+  near(lighter.leftPercent, 13);
+  const even = at(PLAN_PRESETS.even);
+  assert.ok(even);
+  near(even.budgetPercent, 96 / 7);
+  near(even.leftPercent, 96 / 7 - 3);
+  const weekdays = at(PLAN_PRESETS.weekdays);
+  assert.ok(weekdays);
+  near(weekdays.budgetPercent, 96 / 5);
+  near(weekdays.leftPercent, 96 / 5 - 3);
+});
+
+test("custom plan: a double Wednesday gets twice a weekday's share", () => {
+  const plan = [1, 1, 2, 1, 1, 0.5, 0.5];
+  const b = todayBudget(snap("2026-11-04T09:00", 96), weekly(7), local("2026-11-04T10:55"), plan);
+  assert.ok(b);
+  near(b.budgetPercent, (96 * 2) / 7);
+});
+
+test("custom plan: the weekend re-plans from what is left", () => {
+  // Sat 7 Nov with 45% left, reset Tue: Sat 1, Sun 0, Mon 1, Tue 1 → a third each.
+  const plan = [1, 1, 1, 1, 1, 1, 0];
+  const b = todayBudget(snap("2026-11-07T00:01", 45), weekly(55), local("2026-11-07T11:00"), plan);
+  assert.ok(b);
+  near(b.budgetPercent, 15);
+});
+
+test("a day off in the plan gets a budget of 0, not null", () => {
+  const b = todayBudget(snap("2026-11-07T00:01", 45), weekly(56), local("2026-11-07T11:00"), PLAN_PRESETS.weekdays);
+  assert.deepEqual(b, { budgetPercent: 0, leftPercent: 0 });
+  // Still null after the day's work hours, whatever the plan.
+  assert.equal(todayBudget(snap("2026-11-03T22:05", 100), weekly(0), local("2026-11-03T22:10"), PLAN_PRESETS.even), null);
+});
+
+test("a plan with no day left before the reset gives no budget", () => {
+  // Mon 9 Nov, reset Tue 22:00, a plan that only works Wednesdays.
+  const plan = [0, 0, 1, 0, 0, 0, 0];
+  assert.equal(todayBudget(snap("2026-11-09T09:00", 40), weekly(60), local("2026-11-09T10:00"), plan), null);
+});
+
+test("plan: parse, validate and name its preset", () => {
+  assert.deepEqual(parsePlan("[1,1,1,1,1,0.5,0.5]"), [1, 1, 1, 1, 1, 0.5, 0.5]);
+  assert.equal(parsePlan("[1,1,1]"), null);
+  assert.equal(parsePlan("[0,0,0,0,0,0,0]"), null);
+  assert.equal(parsePlan("[1,1,1,1,1,1,3]"), null);
+  assert.equal(parsePlan("[1,1,1,1,1,1,-1]"), null);
+  assert.equal(parsePlan("not json"), null);
+  assert.equal(isDayPlan([1, 1, 1, 1, 1, 1, Number.NaN]), false);
+  assert.equal(presetOf([1, 1, 1, 1, 1, 1, 1]), "even");
+  assert.equal(presetOf([1, 1, 1, 1, 1, 0.5, 0.5]), "lighter");
+  assert.equal(presetOf([1, 1, 1, 1, 1, 0, 0]), "weekdays");
+  assert.equal(presetOf([1, 1, 2, 1, 1, 0.5, 0.5]), "custom");
 });

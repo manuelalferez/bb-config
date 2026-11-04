@@ -106,11 +106,6 @@ li[data-usage-battery-anchor] {
   max-height: 20rem;
 }
 
-/* The settings view is taller; its body scrolls on a short window. */
-.usage-battery-card[data-view="settings"] {
-  max-height: min(32rem, 80vh);
-}
-
 .usage-battery-card-head {
   display: flex;
   align-items: center;
@@ -314,13 +309,58 @@ li[data-usage-battery-anchor] {
   color: var(--sidebar-foreground);
 }
 
+/* Sized to fit bb's 320px disclosure (head included) without scrolling. */
 .usage-battery-set-sec {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  padding: 2px 0 12px;
-  margin-bottom: 12px;
+  gap: 6px;
+  padding: 0 0 8px;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--sidebar-border);
+}
+
+/* A section on one line: label, control(s), value, switch. */
+.usage-battery-set-line {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-battery-set-label {
+  flex: none;
+  font-weight: 600;
+}
+
+.usage-battery-set-line input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--sidebar-foreground);
+}
+
+.usage-battery-set-line output {
+  flex: none;
+  min-width: 28px;
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-battery-set-off {
+  flex: 1;
+  color: var(--muted-foreground);
+}
+
+.usage-battery-set-line .usage-battery-seg {
+  flex: 1;
+  min-width: 0;
+}
+
+.usage-battery-set-pair {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
 }
 
 .usage-battery-set-head {
@@ -335,13 +375,12 @@ li[data-usage-battery-anchor] {
   font-size: 10px;
   font-weight: 400;
   color: var(--muted-foreground);
+  white-space: nowrap;
 }
 
-.usage-battery-set-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.usage-battery-set-head small b {
+  font-weight: 500;
+  color: var(--sidebar-foreground);
 }
 
 .usage-battery-hint {
@@ -358,6 +397,9 @@ li[data-usage-battery-anchor] {
 
 .usage-battery-set-foot {
   margin-top: -2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .usage-battery-chips {
@@ -367,7 +409,7 @@ li[data-usage-battery-anchor] {
 }
 
 .usage-battery-chip {
-  padding: 3px 8px;
+  padding: 1px 7px;
   border: 1px solid var(--sidebar-border);
   border-radius: 9999px;
   background: transparent;
@@ -398,9 +440,9 @@ li[data-usage-battery-anchor] {
 
 .usage-battery-day {
   display: grid;
-  grid-template-rows: 14px 84px 14px 12px;
+  grid-template-rows: 12px 44px 12px 10px;
   justify-items: center;
-  gap: 2px;
+  gap: 1px;
   border-radius: 6px;
   cursor: ns-resize;
   touch-action: none;
@@ -423,7 +465,7 @@ li[data-usage-battery-anchor] {
   position: relative;
   width: 100%;
   max-width: 30px;
-  height: 84px;
+  height: 44px;
   overflow: hidden;
   border-radius: 5px;
   background: var(--sidebar-accent);
@@ -472,26 +514,6 @@ li[data-usage-battery-anchor] {
   font-variant-numeric: tabular-nums;
 }
 
-/* Warning slider */
-.usage-battery-warn-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 36px;
-  align-items: center;
-  gap: 10px;
-}
-
-.usage-battery-warn-row input {
-  width: 100%;
-  margin: 0;
-  accent-color: var(--sidebar-foreground);
-}
-
-.usage-battery-warn-row output {
-  text-align: right;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Segmented control: what the pill shows. */
 .usage-battery-seg {
   display: grid;
@@ -504,7 +526,7 @@ li[data-usage-battery-anchor] {
 }
 
 .usage-battery-seg button {
-  padding: 4px 6px;
+  padding: 3px 4px;
   border: 0;
   border-radius: 5px;
   background: transparent;

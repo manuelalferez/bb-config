@@ -6,10 +6,22 @@
 // the call when it is polled about once a minute).
 //
 // It also keeps one snapshot a day (the weekly % left at the first reading of
-// the local day) in plugin storage, so the card can show today's budget.
+// the local day) in plugin storage, so the card can show today's budget. The
+// daily plan, the warning and what the pill shows are plugin settings: one set
+// on this server for every device. The card's settings view writes them
+// through the `setConfig` RPC.
 import { defineRpcContract, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
-import { isWeekly, nextSnapshot, todayBudget, type DaySnapshot } from "./budget";
+import { isDayPlan, isWeekly, nextSnapshot, todayBudget, type DaySnapshot } from "./budget.ts";
+import {
+  BATTERY_MODES,
+  DEFAULT_PREFS,
+  WARN_MAX,
+  WARN_MIN,
+  prefsFromSettings,
+  settingsFromPrefs,
+  type Prefs,
+} from "./prefs.ts";
 
 /** Normal poll period. */
 const POLL_MS = 3 * 60_000;
@@ -29,8 +41,7 @@ const LEGACY_CLAUDE_KEY = "claudeCode";
 /** Plugin storage key of today's DaySnapshot. */
 const DAY_KEY = "day";
 
-export const BATTERY_MODES = ["today", "tightest", "session", "weekly"] as const;
-export type BatteryMode = (typeof BATTERY_MODES)[number];
+export { BATTERY_MODES, type BatteryMode } from "./prefs.ts";
 
 type UsageLimits = Awaited<
   ReturnType<BbPluginApi["sdk"]["system"]["usageLimits"]>
@@ -60,7 +71,12 @@ const usageState = z.object({
   /** When the figures in `windows` were last fresh, ISO. */
   okAt: z.string().nullable(),
   mode: z.enum(BATTERY_MODES),
-  /** Today's share of the weekly limit and what is left of it, or null. */
+  /** Weight of each weekday, Monday first. */
+  plan: z.array(z.number()),
+  warn: z.boolean(),
+  warnAt: z.number(),
+  todayRow: z.boolean(),
+  /** Today's share of the weekly limit and what is left of it, or null; a budget of 0 is a day off. */
   today: z
     .object({ budgetPercent: z.number(), leftPercent: z.number() })
     .nullable(),
@@ -69,13 +85,27 @@ const usageState = z.object({
 export type UsageState = z.infer<typeof usageState>;
 export type UsageWindow = z.infer<typeof usageWindow>;
 
+const configChange = z
+  .object({
+    mode: z.enum(BATTERY_MODES),
+    plan: z.array(z.number()).refine(isDayPlan, "7 weights from 0 to 2, not all 0"),
+    warn: z.boolean(),
+    warnAt: z.number().int().min(WARN_MIN).max(WARN_MAX),
+    todayRow: z.boolean(),
+  })
+  .partial();
+
+export type ConfigChange = z.infer<typeof configChange>;
+
 export const rpcContract = defineRpcContract({
   state: { input: z.null(), output: usageState },
   /** Polls the provider now (throttled) and returns the new snapshot. */
   refresh: { input: z.null(), output: usageState },
+  /** Saves settings from the card and returns the snapshot they give. */
+  setConfig: { input: configChange, output: usageState },
 });
 
-type Snapshot = Omit<UsageState, "mode" | "today"> & { fetchedAt: string | null };
+type Snapshot = Omit<UsageState, keyof Prefs | "today"> & { fetchedAt: string | null };
 
 const UNKNOWN: Snapshot = {
   status: "unknown",
@@ -131,9 +161,40 @@ export default async function plugin(bb: BbPluginApi) {
       type: "select",
       label: "Battery shows",
       description:
-        "today = what is left of today's share of the weekly limit; tightest = whichever of the 5-hour session or weekly limit has less left; session = 5-hour window only; weekly = weekly window only.",
+        "today = what is left of today's share of the weekly limit; both = today's share and the week; tightest = whichever of the 5-hour session or weekly limit has less left; session = 5-hour window only; weekly = weekly window only.",
       options: [...BATTERY_MODES],
-      default: "today",
+      default: DEFAULT_PREFS.mode,
+    },
+    plan: {
+      type: "string",
+      label: "Daily plan",
+      description:
+        "Weight of each weekday, Monday first, from 0 (a day off) to 2. Each day gets its weight's share of what is left of the week. Default: weekends count half, [1,1,1,1,1,0.5,0.5].",
+      experimental_schema: z.string().refine((value) => {
+        try {
+          return isDayPlan(JSON.parse(value));
+        } catch {
+          return false;
+        }
+      }, "A JSON list of 7 weights from 0 to 2, not all 0, e.g. [1,1,1,1,1,0.5,0.5]"),
+      default: JSON.stringify(DEFAULT_PREFS.plan),
+    },
+    warn: {
+      type: "boolean",
+      label: "Warn about today's share",
+      description: "Turn the pill amber once today's share is mostly used, red when it is gone.",
+      default: DEFAULT_PREFS.warn,
+    },
+    warnAt: {
+      type: "number",
+      label: "Warn at (% of today's share used)",
+      experimental_schema: z.number().int().min(WARN_MIN).max(WARN_MAX),
+      default: DEFAULT_PREFS.warnAt,
+    },
+    todayRow: {
+      type: "boolean",
+      label: "Show the Today row in the card",
+      default: DEFAULT_PREFS.todayRow,
     },
   });
 
@@ -192,15 +253,14 @@ export default async function plugin(bb: BbPluginApi) {
   }
 
   async function withMode(snapshot: Snapshot): Promise<UsageState> {
-    const { mode } = await settings.get();
+    const prefs = prefsFromSettings(await settings.get());
     const { fetchedAt: _, ...rest } = snapshot;
     const weekly = snapshot.windows.find(isWeekly);
     return {
       ...rest,
-      mode: (BATTERY_MODES as readonly string[]).includes(mode)
-        ? (mode as BatteryMode)
-        : "today",
-      today: weekly ? todayBudget(day, weekly, Date.now()) : null,
+      ...prefs,
+      plan: [...prefs.plan],
+      today: weekly ? todayBudget(day, weekly, Date.now(), prefs.plan) : null,
     };
   }
 
@@ -210,6 +270,10 @@ export default async function plugin(bb: BbPluginApi) {
       const last = current.fetchedAt ? Date.parse(current.fetchedAt) : 0;
       const fresh = Date.now() - last < MIN_REFRESH_GAP_MS;
       return withMode(fresh ? current : await poll());
+    },
+    setConfig: async (change) => {
+      await settings.experimental_set(settingsFromPrefs(change));
+      return withMode(current);
     },
   });
 

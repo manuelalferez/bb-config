@@ -1,19 +1,37 @@
 // Daily budget: the weekly limit split over the days left until it resets.
 //
-// Work hours (09–21 local) carry the weight: a weekday counts 1, a Saturday or
-// Sunday WEEKEND_WEIGHT, and a day the window only partly covers counts its
-// share of those hours. Each day's budget is set once, from the % left at the
-// first reading of the day (the snapshot), so a heavy day shrinks the next
-// ones and a light day grows them:
+// Work hours (09–21 local) carry the weight. The plan gives each weekday a
+// weight (by default a weekday counts 1, a Saturday or Sunday 0.5), and a day
+// the window only partly covers counts its share of those hours. Each day's
+// budget is set once, from the % left at the first reading of the day (the
+// snapshot), so a heavy day shrinks the next ones and a light day grows them:
 //
 //   budget(today) = leftAtStart × weight(today) / weight(today … reset)
 //   leftToday     = budget(today) − (leftAtStart − leftNow), at least 0
+//
+// A day the plan weighs 0 is a day off: its budget is 0.
 //
 // Days are local to the host running the bb server.
 
 export const WORK_START_HOUR = 9;
 export const WORK_END_HOUR = 21;
-export const WEEKEND_WEIGHT = 0.5;
+
+/** Weight of each weekday, Monday first: how much of the week that day should get. */
+export type DayPlan = readonly number[];
+
+/** The largest weight a day can have: twice a plain weekday. */
+export const MAX_DAY_WEIGHT = 2;
+
+export const PLAN_PRESETS = {
+  even: [1, 1, 1, 1, 1, 1, 1],
+  /** The default: Saturday and Sunday count half a weekday. */
+  lighter: [1, 1, 1, 1, 1, 0.5, 0.5],
+  weekdays: [1, 1, 1, 1, 1, 0, 0],
+} as const satisfies Record<string, DayPlan>;
+
+export type PlanPreset = keyof typeof PLAN_PRESETS | "custom";
+
+export const DEFAULT_PLAN: DayPlan = PLAN_PRESETS.lighter;
 
 const HOUR_MS = 3_600_000;
 /** A weekly window never spans more than this; guards the day loop against bad dates. */
@@ -51,8 +69,47 @@ export function dayKey(time: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Weighted work hours in [from, to), in days: a full weekday is 1. */
-export function workWeight(from: number, to: number): number {
+/** A valid plan: seven finite weights from 0 to MAX_DAY_WEIGHT, not all 0. */
+export function isDayPlan(value: unknown): value is DayPlan {
+  return (
+    Array.isArray(value) &&
+    value.length === 7 &&
+    value.every((w) => typeof w === "number" && Number.isFinite(w) && w >= 0 && w <= MAX_DAY_WEIGHT) &&
+    value.some((w) => w > 0)
+  );
+}
+
+/** The plan stored as JSON ("[1,1,1,1,1,0.5,0.5]"), or null when it isn't one. */
+export function parsePlan(json: string): DayPlan | null {
+  try {
+    const value: unknown = JSON.parse(json);
+    return isDayPlan(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The preset a plan matches, or "custom". */
+export function presetOf(plan: DayPlan): PlanPreset {
+  for (const [name, preset] of Object.entries(PLAN_PRESETS)) {
+    if (preset.every((w, i) => Math.abs(w - (plan[i] ?? NaN)) < 1e-9)) return name as PlanPreset;
+  }
+  return "custom";
+}
+
+/** Each day's share of a whole week, Monday first, 0–1. */
+export function weekShares(plan: DayPlan): number[] {
+  const total = plan.reduce((sum, w) => sum + w, 0);
+  return plan.map((w) => (total > 0 ? w / total : 0));
+}
+
+/** The plan's weight for a local date (JS getDay: 0 is Sunday). */
+export function planWeight(plan: DayPlan, weekday: number): number {
+  return plan[(weekday + 6) % 7] ?? 0;
+}
+
+/** Weighted work hours in [from, to), in days: a full day weighs its plan weight. */
+export function workWeight(from: number, to: number, plan: DayPlan = DEFAULT_PLAN): number {
   if (!(to > from)) return 0;
   let total = 0;
   const day = new Date(from);
@@ -62,8 +119,7 @@ export function workWeight(from: number, to: number): number {
     const end = new Date(day).setHours(WORK_END_HOUR, 0, 0, 0);
     const overlap = Math.min(end, to) - Math.max(start, from);
     if (overlap <= 0) continue;
-    const weekend = day.getDay() === 0 || day.getDay() === 6;
-    total += (weekend ? WEEKEND_WEIGHT : 1) * (overlap / (end - start));
+    total += planWeight(plan, day.getDay()) * (overlap / (end - start));
   }
   return total;
 }
@@ -98,21 +154,26 @@ export function nextSnapshot(
 /**
  * Today's budget from today's snapshot, or null when there is none: no
  * snapshot for today or this window, or no work hours left before the reset
- * or the end of the day.
+ * or the end of the day. A day off in the plan gets a budget of 0.
  */
 export function todayBudget(
   snapshot: DaySnapshot | null,
   weekly: UsageWindowLike,
   now: number,
+  plan: DayPlan = DEFAULT_PLAN,
 ): TodayBudget | null {
   if (!snapshot || !weekly.resetsAt) return null;
   if (snapshot.day !== dayKey(now) || !sameWindow(snapshot.resetsAt, weekly.resetsAt)) return null;
   const at = Date.parse(snapshot.at);
   const reset = Date.parse(weekly.resetsAt);
   const midnight = new Date(at).setHours(24, 0, 0, 0);
-  const today = workWeight(at, Math.min(midnight, reset));
-  const total = workWeight(at, reset);
-  if (!(today > 0) || !(total > 0)) return null;
+  const end = Math.min(midnight, reset);
+  // Hours left today before the reset, whatever the plan weighs them.
+  if (!(workWeight(at, end, PLAN_PRESETS.even) > 0)) return null;
+  const today = workWeight(at, end, plan);
+  const total = workWeight(at, reset, plan);
+  if (!(total > 0)) return null;
+  if (!(today > 0)) return { budgetPercent: 0, leftPercent: 0 };
   const budget = (snapshot.leftAtStart * today) / total;
   const leftNow = 100 - clamp(weekly.usedPercent, 0, 100);
   const used = snapshot.leftAtStart - leftNow;

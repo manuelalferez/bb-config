@@ -590,7 +590,18 @@ function UsageSettings({ state }: { state: UsageState }) {
       <section className="usage-battery-set-sec" aria-labelledby="usage-battery-plan-title">
         <div className="usage-battery-set-head">
           <span id="usage-battery-plan-title">Daily plan</span>
-          <small>share of the week</small>
+          <small>
+            {!today ? (
+              "share of the week"
+            ) : today.budgetPercent > 0 ? (
+              <>
+                Today <b>{Number(today.budgetPercent.toFixed(1))}%</b> ·{" "}
+                {clampPercent(today.leftPercent)}% left
+              </>
+            ) : (
+              "Today is a day off"
+            )}
+          </small>
         </div>
         <div className="usage-battery-chips" role="group" aria-label="Plan preset">
           {(Object.keys(PRESET_LABELS) as PlanPreset[]).map((name) => (
@@ -608,31 +619,13 @@ function UsageSettings({ state }: { state: UsageState }) {
           ))}
         </div>
         <PlanBars plan={draft.plan} onChange={(plan) => edit({ plan })} />
-        {today ? (
-          <p className="usage-battery-hint">
-            {today.budgetPercent > 0 ? (
-              <>
-                Today gets <b>{Number(today.budgetPercent.toFixed(1))}%</b> of the week ·{" "}
-                {clampPercent(today.leftPercent)}% left
-              </>
-            ) : (
-              <>Today is a day off.</>
-            )}
-          </p>
-        ) : null}
       </section>
 
-      <section className="usage-battery-set-sec" aria-labelledby="usage-battery-warn">
-        <div className="usage-battery-set-head usage-battery-set-toggle">
-          <span id="usage-battery-warn">Warn me</span>
-          <Switch
-            checked={draft.warn}
-            label="Warn about today's share"
-            onChange={(warn) => edit({ warn })}
-          />
-        </div>
+      {/* One line each, so the whole view fits bb's 320px card without scrolling. */}
+      <section className="usage-battery-set-sec usage-battery-set-line" aria-labelledby="usage-battery-warn">
+        <span id="usage-battery-warn" className="usage-battery-set-label">Warn me</span>
         {draft.warn ? (
-          <div className="usage-battery-warn-row">
+          <>
             <input
               type="range"
               min={WARN_MIN}
@@ -643,14 +636,21 @@ function UsageSettings({ state }: { state: UsageState }) {
               onChange={(event) => edit({ warnAt: Number(event.currentTarget.value) })}
             />
             <output>{draft.warnAt}%</output>
-          </div>
-        ) : null}
+          </>
+        ) : (
+          <span className="usage-battery-set-off">off</span>
+        )}
+        <Switch
+          checked={draft.warn}
+          label="Warn about today's share"
+          onChange={(warn) => edit({ warn })}
+        />
       </section>
 
-      <section className="usage-battery-set-sec" aria-labelledby="usage-battery-pill">
-        <div className="usage-battery-set-head">
-          <span id="usage-battery-pill">Pill shows</span>
-        </div>
+      <section className="usage-battery-set-sec usage-battery-set-line" aria-labelledby="usage-battery-pill">
+        <span id="usage-battery-pill" className="usage-battery-set-label" aria-label="Pill shows">
+          Pill
+        </span>
         <div className="usage-battery-seg" role="group" aria-labelledby="usage-battery-pill">
           {PILL_MODES.map(({ mode, label }) => (
             <button
@@ -663,14 +663,14 @@ function UsageSettings({ state }: { state: UsageState }) {
             </button>
           ))}
         </div>
-        <div className="usage-battery-set-toggle">
-          <span>Today row in the card</span>
+        <span className="usage-battery-set-pair">
+          <span className="usage-battery-set-label">Today row</span>
           <Switch
             checked={draft.todayRow}
             label="Show the Today row in the card"
             onChange={(todayRow) => edit({ todayRow })}
           />
-        </div>
+        </span>
       </section>
 
       <p className="usage-battery-hint usage-battery-set-foot">

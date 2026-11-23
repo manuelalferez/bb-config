@@ -29,6 +29,7 @@ Los hilos ya abiertos los ven cuando se reinicia su proceso de Claude.
 ```bash
 bb plugin install git:https://github.com/manuelalferez/bb-config@main --plugin claude-titles --yes
 bb plugin install git:https://github.com/manuelalferez/bb-config@main --plugin usage-battery --yes
+bb plugin install git:https://github.com/manuelalferez/bb-config@main --plugin hide-tasks-badge --yes
 ```
 
 bb clona, instala dependencias y compila `dist/` solo. Sigue la rama `main`:

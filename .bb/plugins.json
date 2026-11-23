@@ -4,6 +4,7 @@
   "name": "manuel-bb-plugins",
   "plugins": [
     { "name": "claude-titles", "source": "./plugins/claude-titles" },
-    { "name": "usage-battery", "source": "./plugins/usage-battery" }
+    { "name": "usage-battery", "source": "./plugins/usage-battery" },
+    { "name": "hide-tasks-badge", "source": "./plugins/hide-tasks-badge" }
   ]
 }

@@ -12,6 +12,7 @@
     "branding": {
       "icon": "EyeOff"
     },
+    "server": "./server.ts",
     "app": "./app.tsx"
   },
   "devDependencies": {
